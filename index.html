@@ -8,7 +8,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 
-<meta name="author" content="Susan Z Martin" />
+<meta name="author" content="Susan Z. Martin" />
 
 
 <title>Practical Machine Learning - Course Project</title>
@@ -62,7 +62,7 @@ img {
 
 <div id="header">
 <h1 class="title">Practical Machine Learning - Course Project</h1>
-<h4 class="author"><em>Susan Z Martin</em></h4>
+<h4 class="author"><em>Susan Z. Martin</em></h4>
 <h4 class="date"><em>Saturday, April 25, 2015</em></h4>
 </div>
 
@@ -137,16 +137,16 @@ dim(projtrainset); dim(projtestset)</code></pre>
 </div>
 <div id="predicting-with-random-forests" class="section level3">
 <h3>Predicting with Random Forests</h3>
-<p>The next method presented in the course was predicting using Random Forests and this was also the method mentioned as being the most successful in the Velloso et al article. Before running the train() function on the training dataset used the technique described in a post from the <a href="http://scg.sdsu.edu/rf_r/">Statistical Consulting Group, San Diego State University</a> to determine the optimal value for the mtry parameter which passes “the optimal numbers of variables to try splitting on at each node” to the randomForest function. (2,p.1) The optimal value indicated for mtry was 9.</p>
+<p>The next method presented in the course was predicting using Random Forests and this was also the method mentioned as being the most successful in the Velloso et al article. Before running the train() function on the training dataset I used the technique described in a post from the <a href="http://scg.sdsu.edu/rf_r/">Statistical Consulting Group, San Diego State University</a> to determine the optimal value for the mtry parameter which passes “the optimal numbers of variables to try splitting on at each node” to the randomForest function. (2,p.1) The optimal value indicated for mtry was 9.</p>
 <pre class="r"><code>optmtry &lt;- tuneRF(projtrainset[-46],projtrainset$classe, ntreeTry=100,
                    stepFactor=1.5,improve=0.01, trace=TRUE, plot=FALSE, dobest=FALSE)</code></pre>
-<p>Next, since I was concerned about the amount of time that the process would take (the unsuccessful and simpler rpart function had taken several minutes) and the possibly below average system characteristics of my laptop (AMD C-70 processor, 4GB of RAM) I scanned the course forums for tips on <a href="https://class.coursera.org/predmachlearn-013/forum/thread?thread_id=13">speeding up the train function</a> when using randomForest. (3)</p>
-<p>Finally, it was pointed out that the fastest way to perform randomForest within the train function was to specify method=“none” however we were instructed to use cross-validation and Community TA Scott Smith explained how this would <a href="https://class.coursera.org/predmachlearn-013/forum/thread?thread_id=98">allow us to ‘predict’ our out of sample error</a>. (4) By specifying cv as the method and number equal to 5 in the trainControl function the random forest function was performed using cross validation. The code for these parameter options and function is shown below - when the code was originally run the model was saved and is loaded in a later chunk so that the Confusion Matrix can be displayed.</p>
+<p>Next, since I was concerned about the amount of time that the process would take (the unsuccessful and simpler rpart function had taken several minutes) particularly given the below average system characteristics of my laptop (AMD C-70 processor, 4GB of RAM) I scanned the course forums for tips on <a href="https://class.coursera.org/predmachlearn-013/forum/thread?thread_id=13">speeding up the train function</a> when using randomForest particularly from within the train() function. (3)</p>
+<p>Finally, it was pointed out that the fastest way to perform randomForest within the train() function was to specify method=“none” however we were instructed to use cross validation and Community TA Scott Smith explained how this would <a href="https://class.coursera.org/predmachlearn-013/forum/thread?thread_id=98">allow us to ‘predict’ our out of sample error</a>. (4) By specifying cv as the method and number equal to 5 in the trainControl function the random forest function was performed using cross validation. The code for these parameter options and function is shown below. Since this process was particularly slow (20-30 minutes) when the code was originally run the model was saved and is loaded in a later chunk so that the Confusion Matrix can be displayed.</p>
 <pre class="r"><code>fitctrlRF &lt;- trainControl(method = &quot;cv&quot;, number=5)
 tgrid &lt;- expand.grid(mtry=c(9)) 
 modfitRF &lt;- train(classe ~ .,data=projtrainset,method=&quot;rf&quot;, trControl = fitctrlRF,
                  tuneGrid=tgrid)</code></pre>
-<p>The statistics from the Confusion Matrix shows the performance of the algorithm against the training set which, as mentioned above, estimates the out of sample error since during cross validation a portion of the training sample is kept out of the model building and is thus a test set within the process. (4) As is shown below <strong>the out of sample error is estimated at 0%</strong> (the algorithm produced has managed to correctly predict the value of the classe variable in each record in the training set - n=14718).</p>
+<p>The statistics from the Confusion Matrix shows the performance of the algorithm against the training set which, as mentioned above, estimates the out of sample error since during cross validation a portion of the training sample is kept out of the model building and is thus a test set within the process. (4) As is shown below <strong>the out of sample error is estimated at 0%</strong> (the algorithm produced has managed to correctly predict the value of 100% of the observations of the classe variable in the training set - n=14718).</p>
 <pre class="r"><code>load(&quot;modfitRF.rda&quot;)
 
 CMtrain &lt;- confusionMatrix(projtrainset$classe,predict(modfitRF,projtrainset))
@@ -165,7 +165,7 @@ CMtest$overall[1:4]</code></pre>
 </div>
 <div id="conclusion" class="section level2">
 <h2>Conclusion</h2>
-<p>Only two machine learning model development methods were investigated here (trees and random forests) but there seemed no reason to continue exploring other methods once excellent predictive accuracy was obtained using random forests. The algorithm developed was 100% accurate on the training set and between 99.3% and 99.7% accurate on the test set. When used on the test set the final algorithm correctly classified 100% of the A and E values of the classe variable but misclassified 0.6% of the B values, 1.3% of the C values and 0.7% of the D values. This course project demonstrated that it is possible to <strong>predict the qualitative performance of a weight lifting exercise with very high accuracy</strong> using data gathered from sensors on both the subject and the weight being lifted.</p>
+<p>Only two machine learning model development methods were investigated here (trees and random forests) but there seemed no reason to continue exploring other methods once excellent predictive accuracy was obtained using random forests. The algorithm developed was 100% accurate on the training set and between 99.3% and 99.7% accurate on the test set. When used on the test set the final algorithm correctly classified 100% of the A and E values of the classe variable but misclassified 0.6% of the B values, 1.3% of the C values and 0.7% of the D values. This course project demonstrated that it is possible to <strong>predict the qualitative performance of a weight lifting exercise with very high accuracy</strong> using data gathered from sensors placed on both the subject and the weight being lifted.</p>
 <p>Lastly, using the final algorithm, a result of 100% accuracy was achieved in predicting the classe variable for the 20-record testing set used in the automatic grading portion of this course project.</p>
 <div id="references" class="section level4">
 <h4>References</h4>
