@@ -135,8 +135,8 @@ dim(projtrainset); dim(projtestset)</code></pre>
 <h3>Predicting with Trees</h3>
 <p>Using the rpart function in R produced a very poor model with only ~53% accuracy. I created a new training set with the problematic variables (see histograms above) removed and tried it again but with no improvement. I have not included the code as the results were so poor.</p>
 </div>
-<div id="predicting-with-random-forest" class="section level3">
-<h3>Predicting with Random Forest</h3>
+<div id="predicting-with-random-forests" class="section level3">
+<h3>Predicting with Random Forests</h3>
 <p>The next method presented in the course was predicting using Random Forests and this was also the method mentioned as being the most successful in the Velloso et al article. Before running the train() function on the training dataset used the technique described in a post from the <a href="http://scg.sdsu.edu/rf_r/">Statistical Consulting Group, San Diego State University</a> to determine the optimal value for the mtry parameter which passes “the optimal numbers of variables to try splitting on at each node” to the randomForest function. (2,p.1) The optimal value indicated for mtry was 9.</p>
 <pre class="r"><code>optmtry &lt;- tuneRF(projtrainset[-46],projtrainset$classe, ntreeTry=100,
                    stepFactor=1.5,improve=0.01, trace=TRUE, plot=FALSE, dobest=FALSE)</code></pre>
@@ -166,6 +166,7 @@ CMtest$overall[1:4]</code></pre>
 <div id="conclusion" class="section level2">
 <h2>Conclusion</h2>
 <p>Only two machine learning model development methods were investigated here (trees and random forests) but there seemed no reason to continue exploring other methods once excellent predictive accuracy was obtained using random forests. The algorithm developed was 100% accurate on the training set and between 99.3% and 99.7% accurate on the test set. When used on the test set the final algorithm correctly classified 100% of the A and E values of the classe variable but misclassified 0.6% of the B values, 1.3% of the C values and 0.7% of the D values. This course project demonstrated that it is possible to <strong>predict the qualitative performance of a weight lifting exercise with very high accuracy</strong> using data gathered from sensors on both the subject and the weight being lifted.</p>
+<p>Lastly, using the final algorithm, a result of 100% accuracy was achieved in predicting the classe variable for the 20-record testing set used in the automatic grading portion of this course project.</p>
 <div id="references" class="section level4">
 <h4>References</h4>
 <p>Note that those references that refer to forum postings are only accessible to those that are enrolled in the Practical Machine Learning course from Coursera (running April 6, 2015 to May 3, 2015). References use Vancouver style which puts a number in brackets in the text to indicate a citation and arranges the reference list by ascending numerical order by citation number.</p>
