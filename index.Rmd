@@ -1,0 +1,183 @@
+---
+title: "Practical Machine Learning - Course Project"
+author: "Susan Z. Martin"
+date: "Saturday, April 25, 2015"
+output: html_document
+---
+
+```{r loadpkgs, echo=FALSE, results='hide', warning=FALSE, message=FALSE, eval=TRUE}
+
+library(dplyr)
+library(caret)
+library(ggplot2)
+library(rpart)
+library(randomForest)
+```
+
+```{r setoptions, echo=FALSE}
+
+options("scipen"=100, "digits"=4)
+
+knitr::opts_chunk$set(echo = TRUE, results="asis", eval=FALSE) 
+```
+
+
+
+### Introduction       
+
+In 2013, Velloso et al investigated whether a subject's **qualitative** performance of a weightlifting exercise could be determined by analyzing information gathered from sensors (gyroscopes and accelerometers) on both the subject's body and the dumbbell being lifted. (1) Unlike other experiments in human activity recognition (HAR) this research attempted to assess the subject's activity qualitatively - how closely to specified correct technique was the activity performed - rather than just identifying the type of activity undertaken. Subjects were asked to perform ten repetitions of lifting a dumbbell in five different ways. The first way - labelled with a value of 'A' in the 'classe' variable - utilized correct technique while for each of the four subsequent sets of 'lifts' the subject was instructed to perform the lift with specific errors in technique. For example, for the activity of classe variable equal to 'B' subjects were asked to modify the lift by "throwing the elbows to the front". (1,p.3)    
+
+The objective of this course project was to create a machine learning algorithm that would accurately predict the value of the 'classe' variable using the sensor data collected by Velloso et al (so in other words to replicate their study without doing all the work of collecting the data!). The rest of this document outlines that process. It should be noted that processing time of the train() function in R can be many minutes in length and so although the code has been included for reproducibility some code chunks in the document do not actually perform the code they contain (eval has been set to FALSE globally but set to TRUE in chunks where code processes quickly).       
+
+###Obtaining Data and Initial Processing
+
+```{r dwnldread, echo=TRUE}
+
+fileURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+download.file(fileURL, destfile = "pml-training.csv")
+
+training <- read.csv("pml-training.csv", stringsAsFactors = TRUE )
+testing <- read.csv("pml-testing.csv", stringsAsFactors = TRUE )
+
+```
+
+Velloso et al's dataset was made available by [Groupware@LES](http://groupware.les.inf.puc-rio.br/) and was downloaded from a [publicly accessible repository](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv) on April 13, 2015. This comma separated value (.csv) file contained 19622 observations of 160 variables including the 'classe' variable which can take five different values - A, B, C, D or E. Since this variable uses a letter to represent a factor when the .csv file was read into a dataframe 'stringsAsFactors' was set to TRUE. A separate file consisting of only 20 observations was downloaded as the test set to be used for automated submission and grading once the final algorithm was developed at the conclusion of this project. This small dataset was not involved in the course project and after being downloaded was set aside and will not be referred to again in this document.      
+
+```{r initproc, echo=TRUE, eval=TRUE}
+
+#rename training to projtraining and leave testing completely alone
+
+projtraining <- training
+
+#eliminating unneeded variables
+
+projtraining <- projtraining[,c(8:11, 37:49, 60:68, 84:86, 102, 113:124, 140, 151:160)]
+
+dim(projtraining)
+```
+
+A summary of the training dataframe showed that many columns contained mostly NAs. For example the 'var_yaw_forearm' variable had 19216 observations that were marked as NA (almost 98%). In addition, other columns contained no data and were marked on the summary with #DIV/0 errors. These columns were discarded. Finally, the first seven columns in the dataframe were also discarded as they contained information not appropriate for building a machine learning algorithm (time series information used in calculating other variables in the dataset as well as a column containing subject names). This removal of variables resulted in a dataset with 53 variables remaining - these operations are shown in the code chunk above.   
+
+### Exploratory Data Analysis    
+
+```{r nzvcorr, echo=TRUE, eval=TRUE}
+
+nearZeroVar(projtraining[,1:52])
+
+##look at correlation and remove those with a correlation over 90
+
+cortable <- cor(projtraining[,1:52])
+
+highCorr <- findCorrelation(cortable, 0.90)
+
+projtraining <- projtraining[, -highCorr]
+
+dim(projtraining)
+
+```
+
+After this first large elimination of variables that were not useful as predictors I checked for variables with low variability (using the nearZeroVar function) and found and discarded those with a correlation above 0.90. No NZV variables were identified but seven variables were found to be highly correlated and discarded. Going into the Algorithm Selection and Building portion of the project the dataset had 19622 rows and 46 columns.    
+
+Histograms were produced for the 45 predictors and four were revealed as being particularly skewed - these are shown below. These variables were kept in mind as those that it might be necessary to transform or eliminate to facilitate model development.   
+
+```{r skewed, eval=TRUE}
+
+par(mfrow=c(2,2))
+
+hist(projtraining[,26], xlab="gyros_dumbbell_y", col="red")
+hist(projtraining[,27], xlab="gyros_dumbbell_z", col = "blue")
+hist(projtraining[,38], xlab="gyros_forearm_x", col = "purple")
+hist(projtraining[,39], xlab="gyros_forearm_y", col = "green")
+
+```
+
+### Creating Training and Testing Datasets
+
+```{r partition, eval=TRUE}
+
+set.seed(1234)
+inTrain <- createDataPartition(projtraining$classe, p = 0.75, list = FALSE)
+
+projtrainset <- projtraining[inTrain,]
+projtestset <- projtraining[-inTrain,]
+
+dim(projtrainset); dim(projtestset)
+
+```
+
+The final step before selecting and beginning to build the predictive algorithm was to partition the dataset into a training set that would be used to build the model and a testing set that would be used to assess the accuracy of the completed model.   
+
+## Selecting and Building The Predictive Algorithm    
+
+Since the outcome the algorithm would attempt to predict was neither continuous nor binary regression models could not be used. I chose to begin with other methods in the order they are presented in the course - so the first model attempted was 'trees' (using the R function 'rpart').
+
+### Predicting with Trees    
+
+Using the rpart function in R produced a very poor model with only ~53% accuracy. I created a new training set with the problematic variables (see histograms above) removed and tried it again but with no improvement. I have not included the code as the results were so poor.    
+
+### Predicting with Random Forests   
+
+The next method presented in the course was predicting using Random Forests and this was also the method mentioned as being the most successful in the Velloso et al article. Before running the train() function on the training dataset I used the technique described in a post from the [Statistical Consulting Group, San Diego State University](http://scg.sdsu.edu/rf_r/) to determine the optimal value for the mtry parameter which passes "the optimal numbers of variables to try splitting on at each node" to the randomForest function. (2,p.1) The optimal value indicated for mtry was 9.
+
+```{r mtry, eval=FALSE}
+
+optmtry <- tuneRF(projtrainset[-46],projtrainset$classe, ntreeTry=100,
+                   stepFactor=1.5,improve=0.01, trace=TRUE, plot=FALSE, dobest=FALSE)
+
+
+```
+
+Next, since I was concerned about the amount of time that the process would take (the unsuccessful and simpler rpart function had taken several minutes) particularly given the  below average system characteristics of my laptop (AMD C-70 processor, 4GB of RAM) I scanned the course forums for tips on [speeding up the train function](https://class.coursera.org/predmachlearn-013/forum/thread?thread_id=13) when using randomForest particularly from within the train() function. (3) 
+
+Finally, it was pointed out that the fastest way to perform randomForest within the train() function was to specify method="none" however we were instructed to use cross validation and Community TA Scott Smith explained how this would [allow us to 'predict' our out of sample error](https://class.coursera.org/predmachlearn-013/forum/thread?thread_id=98). (4) By specifying cv as the method and number equal to 5 in the trainControl function the random forest function was performed using cross validation. The code for these parameter options and function is shown below. Since this process was particularly slow (20-30 minutes) when the code was originally run the model was saved and is loaded in a later chunk so that the Confusion Matrix can be displayed. 
+
+```{r RFwithCV, echo=TRUE, eval=FALSE}
+
+fitctrlRF <- trainControl(method = "cv", number=5)
+tgrid <- expand.grid(mtry=c(9)) 
+modfitRF <- train(classe ~ .,data=projtrainset,method="rf", trControl = fitctrlRF,
+                 tuneGrid=tgrid)
+
+```
+
+The statistics from the Confusion Matrix shows the performance of the algorithm against the training set which, as mentioned above, estimates the out of sample error since during cross validation a portion of the training sample is kept out of the model building and is thus a test set within the process. (4) As is shown below **the out of sample error is estimated at 0%** (the algorithm produced has managed to correctly predict the value of 100% of the observations of the classe variable in the training set - n=14718).     
+
+
+```{r confmatrixtrain, echo=TRUE, eval=TRUE}
+
+load("modfitRF.rda")
+
+CMtrain <- confusionMatrix(projtrainset$classe,predict(modfitRF,projtrainset))
+
+CMtrain$overall[1:4]
+
+```
+
+Performance of the model on the testing data (not the 20 samples used for automated grading but the 4904 observations held back when the data was partitioned) was very good with more than 99% accuracy as shown in the statistics from Confusion Matrix shown below.  
+
+```{r confmatrixtest, echo=TRUE, eval=TRUE}
+
+CMtest <- confusionMatrix(projtestset$classe,predict(modfitRF,projtestset))
+
+
+CMtest$overall[1:4]
+
+```
+
+## Conclusion
+
+Only two machine learning model development methods were investigated here (trees and random forests) but there seemed no reason to continue exploring other methods once excellent predictive accuracy was obtained using random forests. The algorithm developed was 100% accurate on the training set and between 99.3% and 99.7% accurate on the test set. When used on the test set the final algorithm correctly classified 100% of the A and E values of the classe variable but misclassified 0.6% of the B values, 1.3% of the C values and 0.7% of the D values. This course project demonstrated that it is possible to **predict the qualitative performance of a weight lifting exercise with very high accuracy** using data gathered from sensors placed on both the subject and the weight being lifted.
+
+Lastly, using the final algorithm, a result of 100% accuracy was achieved in predicting the classe variable for the 20-record testing set used in the automatic grading portion of this course project.
+
+
+#### References
+
+Note that those references that refer to forum postings are only accessible to those that are enrolled in the Practical Machine Learning course from Coursera (running April 6, 2015 to May 3, 2015). References use Vancouver style which puts a number in brackets in the text to indicate a citation and arranges the reference list by ascending numerical order by citation number.
+
+1. Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013. Available from: http://groupware.les.inf.puc-rio.br/har#ixzz3YHmkOxHi
+2. Peter. Random Forests (R) | Statistical Consulting Group [Internet]. [cited 2015 Apr 25]. Available from: http://scg.sdsu.edu/rf_r/
+3. Acosta, A. Tip to Speedup Course Project [Internet]. Coursera. [cited 2015 Apr 25]. Available from: https://class.coursera.org/predmachlearn-013/forum/thread?thread_id=13 
+4. Kuns, EW. Looking for clarification on the grading rubric regarding cross-validation [Internet]. Coursera. [cited 2015 Apr 25]. Available from: https://class.coursera.org/predmachlearn-013/forum/thread?thread_id=98
+
+
