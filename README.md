@@ -1,2 +1,2 @@
 # MLCourseProject
-Here is the HTML file that details the write-up portion of the Course Project for the Machine Learning course (April 2015)..
+I misread the instructions and so only just uploaded the .Rmd file (index.Rmd) now (9:22 pm PST, April 26). I completely understand if you wish to score me poorly on the first question in the assessment but ask you to be lenient. Thanks.
